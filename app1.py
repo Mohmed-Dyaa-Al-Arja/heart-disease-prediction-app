@@ -8,167 +8,182 @@ st.set_page_config(page_title="Heart Disease Diagnosis", layout="wide")
 st.title("Heart Disease Prediction - Voting Classifier")
 
 try:
-    model = joblib.load("best_model.pkl")
-except Exception as e:
-    st.error(f"❌ Model loading error: {e}")
+    heart_disease_model = joblib.load("be_model.pkl")
+except Exception as error:
+    st.error(f"❌ Model loading error: {error}")
     st.stop()
 
-features = [
+input_features = [
     'Age', 'Sex', 'ChestPainType', 'RestingBP', 'Cholesterol',
     'FastingBS', 'RestingECG', 'MaxHR', 'ExerciseAngina', 'Oldpeak', 'ST_Slope'
 ]
 
-def preprocess_input(df):
-    df = df.copy()
-    df = df[[col for col in df.columns if col in features]]
-    mappings = {
-        'Sex': {'M': 1, 'F': 0},
-        'ChestPainType': {'ASY': 0, 'NAP': 1, 'ATA': 2, 'TA': 3},
+def preprocess_patient_data(patient_data):
+    patient_data = patient_data.copy()
+    patient_data = patient_data[[column for column in patient_data.columns if column in input_features]]
+
+    feature_mappings = {
+        'Sex': {'Male': 1, 'Female': 0},
+        'ChestPainType': {
+            'Asymptomatic': 0,
+            'Non-anginal Pain': 1,
+            'Atypical Angina': 2,
+            'Typical Angina': 3
+        },
         'RestingECG': {'Normal': 0, 'LVH': 1, 'ST': 2},
-        'ExerciseAngina': {'N': 0, 'Y': 1},
-        'ST_Slope': {'Up': 0, 'Flat': 1, 'Down': 2}
+        'ExerciseAngina': {'No': 0, 'Yes': 1},
+        'ST_Slope': {'Upward': 0, 'Flat': 1, 'Downward': 2}
     }
-    for col, mapping in mappings.items():
-        if col in df.columns:
-            df[col] = df[col].map(mapping)
-    return df
 
-mode = st.radio("Choose input method:", ["Manual input", "Upload CSV file"])
+    for column_name, mapping in feature_mappings.items():
+        if column_name in patient_data.columns:
+            patient_data[column_name] = patient_data[column_name].map(mapping)
+            patient_data[column_name].fillna(-1, inplace=True)
 
-if mode == "Manual input":
+    return patient_data
+
+input_mode = st.radio("Choose input method:", ["Manual input", "Upload CSV file"])
+
+if input_mode == "Manual input":
     st.subheader("Enter patient details:")
-    col1, col2 = st.columns(2)
+    left_column, right_column = st.columns(2)
 
-    with col1:
-        age = st.slider("Age", 0, 100, 45)
-        sex = st.selectbox("Sex", ["M", "F"])
-        chest_pain = st.selectbox("Chest Pain Type", ["ASY", "NAP", "ATA", "TA"])
-        resting_bp = st.number_input("Resting Blood Pressure", value=120)
-        cholesterol = st.number_input("Cholesterol", value=200)
-        fasting_bs = st.selectbox("Fasting Blood Sugar (greater than 120 mg/dl)", [0, 1])
+    with left_column:
+        patient_age = st.slider("Age", 0, 100, 45)
+        patient_sex = st.selectbox("Sex", ["Male", "Female"])
+        chest_pain_type = st.selectbox("Chest Pain Type", [
+            "Asymptomatic", "Non-anginal Pain", "Atypical Angina", "Typical Angina"
+        ])
+        resting_blood_pressure = st.number_input("Resting Blood Pressure", value=120)
+        cholesterol_level = st.number_input("Cholesterol", value=200)
+        fasting_blood_sugar = st.selectbox("Fasting Blood Sugar (greater than 120 mg/dl)", [0, 1])
 
-    with col2:
-        rest_ecg = st.selectbox("Resting Electrocardiographic Results", ["Normal", "LVH", "ST"])
-        max_hr = st.number_input("Maximum Heart Rate Achieved", value=150)
-        exercise_angina = st.selectbox("Exercise Induced Angina", ["N", "Y"])
-        oldpeak = st.number_input("Oldpeak (ST Depression)", value=1.0)
-        st_slope = st.selectbox("Slope of the Peak Exercise ST Segment", ["Up", "Flat", "Down"])
+    with right_column:
+        resting_electrocardiographic_result = st.selectbox("Resting Electrocardiographic Results", ["Normal", "LVH", "ST"])
+        maximum_heart_rate = st.number_input("Maximum Heart Rate Achieved", value=150)
+        exercise_induced_angina = st.selectbox("Exercise Induced Angina", ["No", "Yes"])
+        oldpeak_value = st.number_input("Oldpeak (ST Depression)", value=1.0)
+        st_segment_slope = st.selectbox("Slope of the Peak Exercise ST Segment", ["Upward", "Flat", "Downward"])
 
-    input_dict = {
-        'Age': age,
-        'Sex': sex,
-        'ChestPainType': chest_pain,
-        'RestingBP': resting_bp,
-        'Cholesterol': cholesterol,
-        'FastingBS': fasting_bs,
-        'RestingECG': rest_ecg,
-        'MaxHR': max_hr,
-        'ExerciseAngina': exercise_angina,
-        'Oldpeak': oldpeak,
-        'ST_Slope': st_slope
+    single_patient_input = {
+        'Age': patient_age,
+        'Sex': patient_sex,
+        'ChestPainType': chest_pain_type,
+        'RestingBP': resting_blood_pressure,
+        'Cholesterol': cholesterol_level,
+        'FastingBS': fasting_blood_sugar,
+        'RestingECG': resting_electrocardiographic_result,
+        'MaxHR': maximum_heart_rate,
+        'ExerciseAngina': exercise_induced_angina,
+        'Oldpeak': oldpeak_value,
+        'ST_Slope': st_segment_slope
     }
 
-    input_df = pd.DataFrame([input_dict])
-    processed_df = preprocess_input(input_df)
+    patient_input_dataframe = pd.DataFrame([single_patient_input])
+    preprocessed_input = preprocess_patient_data(patient_input_dataframe)
 
     if st.button("Diagnose the case"):
-        prediction = model.predict(processed_df)[0]
-        label = "No Heart Disease" if prediction == 0 else "Possible Heart Disease Detected"
+        diagnosis_prediction = heart_disease_model.predict(preprocessed_input)[0]
+        diagnosis_result = "No Heart Disease" if diagnosis_prediction == 0 else "Possible Heart Disease Detected"
         st.subheader("Diagnosis Result:")
-        st.success(label)
-        st.dataframe(input_df)
+        st.success(diagnosis_result)
+        st.dataframe(patient_input_dataframe)
 
 else:
     st.subheader("Upload CSV file for bulk diagnosis")
-    uploaded_file = st.file_uploader("Upload file here", type="csv")
+    uploaded_csv_file = st.file_uploader("Upload file here", type="csv")
 
-    if uploaded_file is not None:
-        data = pd.read_csv(uploaded_file)
-        original_data = data.copy()
-        process_data = data[[col for col in data.columns if col in features]]
+    if uploaded_csv_file is not None:
+        uploaded_data = pd.read_csv(uploaded_csv_file)
+        original_uploaded_data = uploaded_data.copy()
 
-        categorical_cols = ['Sex', 'ChestPainType', 'RestingECG', 'ExerciseAngina', 'ST_Slope']
-        numerical_cols = ['Age', 'RestingBP', 'Cholesterol', 'FastingBS', 'MaxHR', 'Oldpeak']
+        missing_columns = [column for column in input_features if column not in uploaded_data.columns]
+        if missing_columns:
+            st.error(f"Missing columns in the uploaded CSV: {missing_columns}")
+        else:
+            filtered_uploaded_data = uploaded_data[input_features]
 
-        try:
-            processed = preprocess_input(process_data)
-            imputer = SimpleImputer(strategy='mean')
-            processed[numerical_cols] = imputer.fit_transform(processed[numerical_cols])
-            predictions = model.predict(processed)
+            categorical_columns = ['Sex', 'ChestPainType', 'RestingECG', 'ExerciseAngina', 'ST_Slope']
+            numerical_columns = ['Age', 'RestingBP', 'Cholesterol', 'FastingBS', 'MaxHR', 'Oldpeak']
 
-            original_data = original_data.loc[processed.index]
-            original_data.insert(0, "person_id", range(1, len(original_data) + 1))
-            original_data["heart_disease_prediction"] = predictions
-            original_data["Patient Diagnosis"] = original_data["heart_disease_prediction"].replace({0: "No Disease", 1: "Possible Disease"})
+            try:
+                processed_uploaded_data = preprocess_patient_data(filtered_uploaded_data)
+                imputer = SimpleImputer(strategy='mean')
+                processed_uploaded_data[numerical_columns] = imputer.fit_transform(processed_uploaded_data[numerical_columns])
 
-            st.success("Prediction completed successfully")
+                predictions = heart_disease_model.predict(processed_uploaded_data)
 
-            st.subheader("Complete table of all cases")
-            st.dataframe(original_data)
-            total_count = len(original_data)
-            count_disease = (original_data["heart_disease_prediction"] == 1).sum()
-            count_healthy = (original_data["heart_disease_prediction"] == 0).sum()
-            st.caption(f"🧮 Total records: {total_count} | With disease: {count_disease} ({(count_disease/total_count)*100:.2f}%) | Without disease: {count_healthy} ({(count_healthy/total_count)*100:.2f}%)")
+                original_uploaded_data = original_uploaded_data.loc[processed_uploaded_data.index]
+                original_uploaded_data.insert(0, "person_id", range(1, len(original_uploaded_data) + 1))
+                original_uploaded_data["heart_disease_prediction"] = predictions
+                original_uploaded_data["Patient Diagnosis"] = original_uploaded_data["heart_disease_prediction"].replace({0: "No Disease", 1: "Possible Disease"})
 
-            st.subheader("Patients predicted with possible heart disease")
-            df_disease = original_data[original_data["heart_disease_prediction"] == 1]
-            st.dataframe(df_disease)
-            st.caption(f"📊 Patients with disease: {len(df_disease)} / {total_count} ({(len(df_disease)/total_count)*100:.2f}%)")
+                st.success("Prediction completed successfully")
 
-            st.subheader("Patients predicted as healthy")
-            df_healthy = original_data[original_data["heart_disease_prediction"] == 0]
-            st.dataframe(df_healthy)
-            st.caption(f"🧘 Patients without disease: {len(df_healthy)} / {total_count} ({(len(df_healthy)/total_count)*100:.2f}%)")
+                st.subheader("Complete table of all cases")
+                st.dataframe(original_uploaded_data)
 
-            chart_type = st.selectbox("Select chart type:", ["Bar Chart", "Area Chart", "Line Chart", "Circle Pack Chart"])
+                total_cases = len(original_uploaded_data)
+                total_disease_cases = (original_uploaded_data["heart_disease_prediction"] == 1).sum()
+                total_healthy_cases = (original_uploaded_data["heart_disease_prediction"] == 0).sum()
 
-            def plot_chart(data, col, chart_type):
-                if chart_type == "Bar Chart":
-                    chart = alt.Chart(data).mark_bar().encode(
-                        x=alt.X(f"{col}:N" if data[col].dtype == 'object' else f"{col}:Q", title=col),
-                        y='count()',
-                        color='Patient Diagnosis:N',
-                        tooltip=['count()']
-                    ).interactive().properties(width=600)
-                elif chart_type == "Area Chart":
-                    chart = alt.Chart(data).mark_area(
-                        opacity=0.4, interpolate='step'
-                    ).encode(
-                        x=alt.X(f"{col}:Q" if data[col].dtype != 'object' else f"{col}:N",
-                                bin=alt.Bin(maxbins=40) if data[col].dtype != 'object' else None, title=col),
-                        y='count()',
-                        color='Patient Diagnosis:N',
-                        tooltip=['count()']
-                    ).interactive().properties(width=600)
-                elif chart_type == "Line Chart":
-                    chart = alt.Chart(data).mark_line(point=True).encode(
-                        x=alt.X(f"{col}:Q" if data[col].dtype != 'object' else f"{col}:N",
-                                bin=alt.Bin(maxbins=40) if data[col].dtype != 'object' else None, title=col),
-                        y='count()',
-                        color='Patient Diagnosis:N',
-                        tooltip=['count()']
-                    ).interactive().properties(width=600)
-                elif chart_type == "Circle Pack Chart":
-                    chart = alt.Chart(data).mark_circle().encode(
-                        x=alt.X(f"{col}:N" if data[col].dtype == 'object' else f"{col}:Q", title=col),
-                        y='count()',
-                        size='count()',
-                        color='Patient Diagnosis:N',
-                        tooltip=['count()']
-                    ).interactive().properties(width=600)
-                else:
-                    chart = None
-                return chart
+                st.caption(f"🧮 Total records: {total_cases} | With disease: {total_disease_cases} ({(total_disease_cases/total_cases)*100:.2f}%) | Without disease: {total_healthy_cases} ({(total_healthy_cases/total_cases)*100:.2f}%)")
 
-            for col in categorical_cols + numerical_cols:
-                if col in original_data.columns:
-                    st.markdown(f"### Distribution of `{col}` based on diagnosis result")
-                    chart = plot_chart(original_data, col, chart_type)
-                    if chart:
-                        st.altair_chart(chart)
+                st.subheader("Patients predicted with possible heart disease")
+                patients_with_disease = original_uploaded_data[original_uploaded_data["heart_disease_prediction"] == 1]
+                st.dataframe(patients_with_disease)
 
-        except Exception as e:
-            st.error(f"Prediction error: {e}")
+                st.subheader("Patients predicted as healthy")
+                healthy_patients = original_uploaded_data[original_uploaded_data["heart_disease_prediction"] == 0]
+                st.dataframe(healthy_patients)
+
+                selected_chart_type = st.selectbox("Select chart type:", ["Bar Chart", "Area Chart", "Line Chart", "Circle Pack Chart"])
+
+                def plot_distribution_chart(dataframe, column_name, chart_type):
+                    if chart_type == "Bar Chart":
+                        chart = alt.Chart(dataframe).mark_bar().encode(
+                            x=alt.X(f"{column_name}:N" if dataframe[column_name].dtype == 'object' else f"{column_name}:Q", title=column_name),
+                            y='count()',
+                            color='Patient Diagnosis:N',
+                            tooltip=['count()']
+                        ).interactive().properties(width=600)
+                    elif chart_type == "Area Chart":
+                        chart = alt.Chart(dataframe).mark_area(opacity=0.4, interpolate='step').encode(
+                            x=alt.X(f"{column_name}:Q" if dataframe[column_name].dtype != 'object' else f"{column_name}:N",
+                                    bin=alt.Bin(maxbins=40) if dataframe[column_name].dtype != 'object' else None, title=column_name),
+                            y='count()',
+                            color='Patient Diagnosis:N',
+                            tooltip=['count()']
+                        ).interactive().properties(width=600)
+                    elif chart_type == "Line Chart":
+                        chart = alt.Chart(dataframe).mark_line(point=True).encode(
+                            x=alt.X(f"{column_name}:Q" if dataframe[column_name].dtype != 'object' else f"{column_name}:N",
+                                    bin=alt.Bin(maxbins=40) if dataframe[column_name].dtype != 'object' else None, title=column_name),
+                            y='count()',
+                            color='Patient Diagnosis:N',
+                            tooltip=['count()']
+                        ).interactive().properties(width=600)
+                    elif chart_type == "Circle Pack Chart":
+                        chart = alt.Chart(dataframe).mark_circle().encode(
+                            x=alt.X(f"{column_name}:N" if dataframe[column_name].dtype == 'object' else f"{column_name}:Q", title=column_name),
+                            y='count()',
+                            size='count()',
+                            color='Patient Diagnosis:N',
+                            tooltip=['count()']
+                        ).interactive().properties(width=600)
+                    else:
+                        chart = None
+                    return chart
+
+                for column in categorical_columns + numerical_columns:
+                    if column in original_uploaded_data.columns:
+                        st.markdown(f"### Distribution of `{column}` based on diagnosis result")
+                        chart_output = plot_distribution_chart(original_uploaded_data, column, selected_chart_type)
+                        if chart_output:
+                            st.altair_chart(chart_output)
+
+            except Exception as error:
+                st.error(f"Prediction error: {error}")
 
 st.markdown("""
 ---
@@ -176,5 +191,3 @@ st.markdown("""
     Developed by <b>Mohamed Dyaa</b><br>
 </div>
 """, unsafe_allow_html=True)
-
-# streamlit run "D:\mohamed dyaa\2.heart_disease\app.py"

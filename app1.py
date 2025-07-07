@@ -119,7 +119,7 @@ else:
             st.subheader("Patients predicted as healthy")
             df_healthy = original_data[original_data["heart_disease_prediction"] == 0]
             st.dataframe(df_healthy)
-            st.caption(f"🧘 Patients without disease: {len(df_healthy)} / {total_count} ({(len[df_healthy)/total_count)*100:.2f}%)")
+            st.caption(f"🧘 Patients without disease: {len(df_healthy)} / {total_count} ({(len(df_healthy)/total_count)*100:.2f}%)")
 
             chart_type = st.selectbox("Select chart type:", ["Bar Chart", "Area Chart", "Line Chart", "Circle Pack Chart"])
 

@@ -7,7 +7,12 @@ from sklearn.impute import SimpleImputer
 st.set_page_config(page_title="Heart Disease Diagnosis", layout="wide")
 st.title("Heart Disease Prediction - Voting Classifier")
 
-model = joblib.load("best_model.pkl")
+# معالجة الخطأ أثناء تحميل النموذج
+try:
+    model = joblib.load("best_model.pkl")
+except Exception as e:
+    st.error(f"❌ Model loading error: {e}")
+    st.stop()
 
 features = [
     'Age', 'Sex', 'ChestPainType', 'RestingBP', 'Cholesterol',
@@ -114,7 +119,7 @@ else:
             st.subheader("Patients predicted as healthy")
             df_healthy = original_data[original_data["heart_disease_prediction"] == 0]
             st.dataframe(df_healthy)
-            st.caption(f"🧘 Patients without disease: {len(df_healthy)} / {total_count} ({(len(df_healthy)/total_count)*100:.2f}%)")
+            st.caption(f"🧘 Patients without disease: {len(df_healthy)} / {total_count} ({(len[df_healthy)/total_count)*100:.2f}%)")
 
             chart_type = st.selectbox("Select chart type:", ["Bar Chart", "Area Chart", "Line Chart", "Circle Pack Chart"])
 
@@ -172,6 +177,5 @@ st.markdown("""
     Developed by <b>Mohamed Dyaa</b><br>
 </div>
 """, unsafe_allow_html=True)
-
 
 # streamlit run "D:\mohamed dyaa\2.heart_disease\app.py"

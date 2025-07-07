@@ -7,7 +7,6 @@ from sklearn.impute import SimpleImputer
 st.set_page_config(page_title="Heart Disease Diagnosis", layout="wide")
 st.title("Heart Disease Prediction - Voting Classifier")
 
-# معالجة الخطأ أثناء تحميل النموذج
 try:
     model = joblib.load("best_model.pkl")
 except Exception as e:

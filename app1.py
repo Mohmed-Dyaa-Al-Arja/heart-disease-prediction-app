@@ -7,9 +7,13 @@ from sklearn.impute import SimpleImputer
 st.set_page_config(page_title="Heart Disease Diagnosis", layout="wide")
 st.title("Heart Disease Prediction - Voting Classifier")
 
-model = joblib.load("best_model.pkl")
+try:
+    heart_disease_model = joblib.load("be_model.pkl")
+except Exception as error:
+    st.error(f"❌ Model loading error: {error}")
+    st.stop()
 
-features = [
+input_features = [
     'Age', 'Sex', 'ChestPainType', 'RestingBP', 'Cholesterol',
     'FastingBS', 'RestingECG', 'MaxHR', 'ExerciseAngina', 'Oldpeak', 'ST_Slope'
 ]
